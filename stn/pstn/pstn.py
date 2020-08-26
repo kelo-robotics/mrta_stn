@@ -139,7 +139,12 @@ class PSTN(STN):
 
             elif self.nodes[i]['data'].node_type == "pickup":
                 distribution = self.get_work_time_distribution(task)
-                self.add_constraint(i, j, distribution=distribution)
+                if distribution.endswith("_0.0"):  # the distribution has no variation (stdev is 0)
+                    # Make the constraint a requirement constraint
+                    mean = float(distribution.split("_")[1])
+                    self.add_constraint(i, j, mean, mean)
+                else:
+                    self.add_constraint(i, j, distribution=distribution)
 
             elif self.nodes[i]['data'].node_type == "delivery":
                 # wait time between finish of one task and start of the next one. Fixed to [0, inf]
