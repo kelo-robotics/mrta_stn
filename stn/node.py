@@ -9,7 +9,7 @@ class Node(object):
         if isinstance(task_id, str):
             task_id = from_str(task_id)
         self.task_id = task_id
-        # The node can be of node_type zero_timepoint, start, pickup or delivery
+        # The node can be of node_type zero_timepoint, departure, start or finish
         self.node_type = node_type
         self.is_executed = is_executed
         self.action_id = kwargs.get("action_id")

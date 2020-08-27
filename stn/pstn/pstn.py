@@ -115,9 +115,9 @@ class PSTN(STN):
     def add_intertimepoints_constraints(self, constraints, task):
         """ Adds constraints between the timepoints of a task
         Constraints between:
-        - start and pickup (contingent)
-        - pickup and delivery (contingent)
-        - delivery and next task (if any) (requirement)
+        - departure and start (contingent)
+        - start and finish (contingent)
+        - finish and next task (if any) (requirement)
         Args:
             constraints (list) : list of tuples that defines the pair of nodes between which a new constraint should be added
             Example:
@@ -128,7 +128,7 @@ class PSTN(STN):
         """
         for (i, j) in constraints:
             self.logger.debug("Adding constraint: %s ", (i, j))
-            if self.nodes[i]['data'].node_type == "start":
+            if self.nodes[i]['data'].node_type == "departure":
                 distribution = self.get_travel_time_distribution(task)
                 if distribution.endswith("_0.0"):  # the distribution has no variation (stdev is 0)
                     # Make the constraint a requirement constraint
@@ -137,7 +137,7 @@ class PSTN(STN):
                 else:
                     self.add_constraint(i, j, distribution=distribution)
 
-            elif self.nodes[i]['data'].node_type == "pickup":
+            elif self.nodes[i]['data'].node_type == "start":
                 distribution = self.get_work_time_distribution(task)
                 if distribution.endswith("_0.0"):  # the distribution has no variation (stdev is 0)
                     # Make the constraint a requirement constraint
@@ -146,8 +146,8 @@ class PSTN(STN):
                 else:
                     self.add_constraint(i, j, distribution=distribution)
 
-            elif self.nodes[i]['data'].node_type == "delivery":
-                # wait time between finish of one task and start of the next one. Fixed to [0, inf]
+            elif self.nodes[i]['data'].node_type == "finish":
+                # wait time between finish of one task and departure of the next one. Fixed to [0, inf]
                 self.add_constraint(i, j)
 
     @staticmethod

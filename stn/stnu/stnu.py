@@ -108,7 +108,7 @@ class STNU(STN):
     def add_intertimepoints_constraints(self, constraints, task):
         """ Adds constraints between the timepoints of a task
         Constraints between:
-        - navigation start and start (contingent)
+        - departure and start (contingent)
         - start and finish (contingent)
         - finish and next task (if any) (requirement)
         Args:
@@ -121,19 +121,19 @@ class STNU(STN):
         """
         for (i, j) in constraints:
             self.logger.debug("Adding constraint: %s ", (i, j))
-            if self.nodes[i]['data'].node_type == "start":
+            if self.nodes[i]['data'].node_type == "departure":
                 lower_bound, upper_bound = self.get_travel_time_bounded_duration(task)
                 if lower_bound == upper_bound:
                     self.add_constraint(i, j, 0, 0)
                 else:
                     self.add_constraint(i, j, lower_bound, upper_bound, is_contingent=True)
 
-            elif self.nodes[i]['data'].node_type == "pickup":
+            elif self.nodes[i]['data'].node_type == "start":
                 lower_bound, upper_bound = self.get_work_time_bounded_duration(task)
                 self.add_constraint(i, j, lower_bound, upper_bound, is_contingent=True)
 
-            elif self.nodes[i]['data'].node_type == "delivery":
-                # wait time between finish of one task and start of the next one. Fixed to [0, inf]
+            elif self.nodes[i]['data'].node_type == "finish":
+                # wait time between finish of one task and departure of the next one. Fixed to [0, inf]
                 self.add_constraint(i, j, 0)
 
     @staticmethod
