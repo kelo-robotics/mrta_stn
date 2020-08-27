@@ -145,9 +145,9 @@ class STN(nx.DiGraph):
         """ A timepoint is represented by a node in the STN
         The node can be of node_type:
         - zero_timepoint: references the schedule to the origin
-        - start : time at which the robot starts navigating towards the pickup location
-        - pickup : time at which the robot arrives starts the pickup action
-        - delivery : time at which the robot finishes the delivery action
+        - departure : time at which the robot starts navigating towards the start location
+        - start : time at which the robot arrives at the start location
+        - finish : time at which the robot finishes the last action
         """
         node = Node(task.task_id, node_type, **kwargs)
         self.add_node(id, data=node)
@@ -155,14 +155,14 @@ class STN(nx.DiGraph):
     def add_task(self, task, position=1):
         """ A task is added as 3 timepoints and 5 constraints in the STN"
         Timepoints:
-        - start
-        - pickup time
-        - delivery time
+        - departure
+        - start time
+        - finish time
         Constraints:
+        - earliest and latest departure times
+        - travel time: time to go from current position to start the position
         - earliest and latest start times
-        - travel time: time to go from current position to pickup position)
-        - earliest and latest pickup times
-        - work time: time to perform the task (time to transport an object from the pickup to the delivery location)
+        - work time: time to perform the task (e.g. time to transport an object from the start to the finish location)
         - earliest and latest finish times
         If the task is not the first in the STN, add wait time constraint
 
@@ -171,44 +171,44 @@ class STN(nx.DiGraph):
         """
         self.logger.info("Adding task %s in position %s", task.task_id, position)
 
-        start_node_id = 2 * position + (position-2)
-        pickup_node_id = start_node_id + 1
-        delivery_node_id = pickup_node_id + 1
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        finish_node_id = start_node_id + 1
 
-        # Remove constraint linking start_node_id and previous node (if any)
-        if self.has_edge(start_node_id-1, start_node_id) and start_node_id-1 != 0:
-            self.logger.debug("Deleting constraint: %s  => %s", start_node_id-1, start_node_id)
+        # Remove constraint linking departure_node_id and previous node (if any)
+        if self.has_edge(departure_node_id-1, departure_node_id) and departure_node_id-1 != 0:
+            self.logger.debug("Deleting constraint: %s  => %s", departure_node_id-1, departure_node_id)
 
-            self.remove_constraint(start_node_id-1, start_node_id)
+            self.remove_constraint(departure_node_id-1, departure_node_id)
 
         # Displace by 3 all nodes and constraints after position
         mapping = {}
         for node_id, data in self.nodes(data=True):
-            if node_id >= start_node_id:
+            if node_id >= departure_node_id:
                 mapping[node_id] = node_id + 3
         self.logger.debug("mapping: %s ", mapping)
         nx.relabel_nodes(self, mapping, copy=False)
 
         # Add new timepoints
-        self.add_timepoint(start_node_id, task, "start")
+        self.add_timepoint(departure_node_id, task, "departure")
+        self.add_timepoint_constraint(departure_node_id, task.get_timepoint("departure"))
+
+        self.add_timepoint(start_node_id, task, "start", action_id=task.start_action_id)
         self.add_timepoint_constraint(start_node_id, task.get_timepoint("start"))
 
-        self.add_timepoint(pickup_node_id, task, "pickup", action_id=task.pickup_action_id)
-        self.add_timepoint_constraint(pickup_node_id, task.get_timepoint("pickup"))
-
-        self.add_timepoint(delivery_node_id, task, "delivery", action_id=task.delivery_action_id)
-        self.add_timepoint_constraint(delivery_node_id, task.get_timepoint("delivery"))
+        self.add_timepoint(finish_node_id, task, "finish", action_id=task.finish_action_id)
+        self.add_timepoint_constraint(finish_node_id, task.get_timepoint("finish"))
 
         # Add constraints between new nodes
-        new_constraints_between = [start_node_id, pickup_node_id, delivery_node_id]
+        new_constraints_between = [departure_node_id, start_node_id, finish_node_id]
 
-        # Check if there is a node after the new delivery node
-        if self.has_node(delivery_node_id+1):
-            new_constraints_between.append(delivery_node_id+1)
+        # Check if there is a node after the new finish node
+        if self.has_node(finish_node_id+1):
+            new_constraints_between.append(finish_node_id+1)
 
-        # Check if there is a node before the new start node
-        if self.has_node(start_node_id-1):
-            new_constraints_between.insert(0, start_node_id-1)
+        # Check if there is a node before the new departure node
+        if self.has_node(departure_node_id-1):
+            new_constraints_between.insert(0, departure_node_id-1)
 
         self.logger.debug("New constraints between nodes: %s", new_constraints_between)
 
@@ -220,9 +220,9 @@ class STN(nx.DiGraph):
     def add_intertimepoints_constraints(self, constraints, task):
         """ Adds constraints between the timepoints of a task
         Constraints between:
-        - start and pickup
-        - pickup and delivery
-        - delivery and start next task (if any)
+        - departure and start
+        - start and finish
+        - finish and departure next task (if any)
         Args:
             constraints (list) : list of tuples that defines the pair of nodes between which a new constraint should be added
             Example:
@@ -233,44 +233,44 @@ class STN(nx.DiGraph):
         """
         for (i, j) in constraints:
             self.logger.debug("Adding constraint: %s ", (i, j))
-            if self.nodes[i]['data'].node_type == "start":
+            if self.nodes[i]['data'].node_type == "departure":
                 travel_time = self.get_travel_time(task)
                 self.add_constraint(i, j, travel_time, travel_time)
 
-            elif self.nodes[i]['data'].node_type == "pickup":
+            elif self.nodes[i]['data'].node_type == "start":
                 work_time = self.get_work_time(task)
                 self.add_constraint(i, j, work_time, work_time)
 
-            elif self.nodes[i]['data'].node_type == "delivery":
-                # wait time between finish of one task and start of the next one. Fixed to [0, inf]
+            elif self.nodes[i]['data'].node_type == "finish":
+                # wait time between finish of one task and departure of the next one. Fixed to [0, inf]
                 self.add_constraint(i, j)
 
     @staticmethod
     def get_travel_time(task):
-        """ Returns the mean of the travel time (time for going from current pose to pickup pose)
+        """ Returns the mean of the travel time (time for going from current pose to start pose)
         """
         travel_time = task.get_edge("travel_time")
         return travel_time.mean
 
     @staticmethod
     def get_work_time(task):
-        """ Returns the mean of the work time (time to transport an object from the pickup to the delivery location)
+        """ Returns the mean of the work time (e.g. time to transport an object from the start to the finish location)
         """
         work_time = task.get_edge("work_time")
         return work_time.mean
 
     @staticmethod
-    def create_timepoint_constraints(r_earliest_pickup, r_latest_pickup, travel_time, work_time):
+    def create_timepoint_constraints(r_earliest_start, r_latest_start, travel_time, work_time):
+        departure_constraint = Timepoint(name="departure",
+                                         r_earliest_time=r_earliest_start - travel_time.mean,
+                                         r_latest_time=r_latest_start - travel_time.mean)
         start_constraint = Timepoint(name="start",
-                                     r_earliest_time=r_earliest_pickup - travel_time.mean,
-                                     r_latest_time=r_latest_pickup - travel_time.mean)
-        pickup_constraint = Timepoint(name="pickup",
-                                      r_earliest_time=r_earliest_pickup,
-                                      r_latest_time=r_latest_pickup)
-        delivery_constraint = Timepoint(name="delivery",
-                                        r_earliest_time=r_earliest_pickup + work_time.mean,
-                                        r_latest_time=r_latest_pickup + work_time.mean)
-        return [start_constraint, pickup_constraint, delivery_constraint]
+                                     r_earliest_time=r_earliest_start,
+                                     r_latest_time=r_latest_start)
+        finish_constraint = Timepoint(name="finish",
+                                      r_earliest_time=r_earliest_start + work_time.mean,
+                                      r_latest_time=r_latest_start + work_time.mean)
+        return [departure_constraint, start_constraint, finish_constraint]
 
     def show_n_nodes_edges(self):
         """ Prints the number of nodes and edges in the stn
@@ -280,25 +280,25 @@ class STN(nx.DiGraph):
 
     def update_task(self, task):
         position = self.get_task_position(task.task_id)
-        start_node_id = 2 * position + (position-2)
-        pickup_node_id = start_node_id + 1
-        delivery_node_id = pickup_node_id + 1
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        finish_node_id = start_node_id + 1
 
         # Adding an existing timepoint constraint updates the constraint
+        self.add_timepoint_constraint(departure_node_id, task.get_timepoint("departure"))
         self.add_timepoint_constraint(start_node_id, task.get_timepoint("start"))
-        self.add_timepoint_constraint(pickup_node_id, task.get_timepoint("pickup"))
-        self.add_timepoint_constraint(delivery_node_id, task.get_timepoint("delivery"))
+        self.add_timepoint_constraint(finish_node_id, task.get_timepoint("finish"))
 
         # Add constraints between new nodes
-        new_constraints_between = [start_node_id, pickup_node_id, delivery_node_id]
+        new_constraints_between = [departure_node_id, start_node_id, finish_node_id]
 
-        # Check if there is a node after the new delivery node
-        if self.has_node(delivery_node_id+1):
-            new_constraints_between.append(delivery_node_id+1)
+        # Check if there is a node after the new finish node
+        if self.has_node(finish_node_id+1):
+            new_constraints_between.append(finish_node_id+1)
 
-        # Check if there is a node before the new start node
-        if self.has_node(start_node_id-1):
-            new_constraints_between.insert(0, start_node_id-1)
+        # Check if there is a node before the new departure node
+        if self.has_node(departure_node_id-1):
+            new_constraints_between.insert(0, departure_node_id-1)
 
         constraints = [((i), (i + 1)) for i in new_constraints_between[:-1]]
         self.add_intertimepoints_constraints(constraints, task)
@@ -307,24 +307,24 @@ class STN(nx.DiGraph):
         """ Removes the task from the given position"""
 
         self.logger.info("Removing task at position: %s", position)
-        start_node_id = 2 * position + (position-2)
-        pickup_node_id = start_node_id + 1
-        delivery_node_id = pickup_node_id + 1
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        finish_node_id = start_node_id + 1
 
         new_constraints_between = list()
 
-        if self.has_node(start_node_id-1) and self.has_node(delivery_node_id+1):
-            new_constraints_between = [start_node_id-1, start_node_id]
+        if self.has_node(departure_node_id-1) and self.has_node(finish_node_id+1):
+            new_constraints_between = [departure_node_id-1, departure_node_id]
 
         # Remove node and all adjacent edges
+        self.remove_node(departure_node_id)
         self.remove_node(start_node_id)
-        self.remove_node(pickup_node_id)
-        self.remove_node(delivery_node_id)
+        self.remove_node(finish_node_id)
 
         # Displace by -3 all nodes and constraints after position
         mapping = {}
         for node_id, data in self.nodes(data=True):
-            if node_id >= start_node_id:
+            if node_id >= departure_node_id:
                 mapping[node_id] = node_id - 3
         self.logger.debug("mapping: %s", mapping)
         nx.relabel_nodes(self, mapping, copy=False)
@@ -334,8 +334,8 @@ class STN(nx.DiGraph):
             self.logger.debug("Constraints: %s", constraints)
 
             for (i, j) in constraints:
-                if self.nodes[i]['data'].node_type == "delivery":
-                    # wait time between finish of one task and start of the next one
+                if self.nodes[i]['data'].node_type == "finish":
+                    # wait time between finish of one task and departure of the next one
                     self.add_constraint(i, j)
 
     def remove_node_ids(self, node_ids):
@@ -443,7 +443,7 @@ class STN(nx.DiGraph):
         completion_time = 0
         task_ids = self.get_tasks()
         for i, task_id in enumerate(task_ids):
-            completion_time += self.get_time(task_id, "delivery", lower_bound=False)
+            completion_time += self.get_time(task_id, "finish", lower_bound=False)
 
         return completion_time
 
@@ -460,16 +460,16 @@ class STN(nx.DiGraph):
 
         for i, task_id in enumerate(task_ids):
             if i > 0:
-                r_earliest_delivery_time_previous_task = self.get_time(task_ids[i-1], "delivery")
-                r_earliest_start_time = self.get_time(task_ids[i], "start")
-                idle_time += round(r_earliest_start_time - r_earliest_delivery_time_previous_task)
+                r_earliest_finish_time_previous_task = self.get_time(task_ids[i-1], "finish")
+                r_earliest_departure_time = self.get_time(task_ids[i], "departure")
+                idle_time += round(r_earliest_departure_time - r_earliest_finish_time_previous_task)
         return idle_time
 
     def add_timepoint_constraint(self, node_id, timepoint_constraint):
         """ Adds the earliest and latest times to execute a timepoint (node)
+        Departure timepoint [earliest_departure_time, latest_departure_time]
         Start timepoint [earliest_start_time, latest_start_time]
-        Pickup timepoint [earliest_pickup_time, latest_pickup_time]
-        Delivery timepoint [earliest_delivery_time, lastest_delivery_time]
+        Finish timepoint [earliest_finish_time, latest_finish_time]
         """
         self.add_constraint(0, node_id, timepoint_constraint.r_earliest_time, timepoint_constraint.r_latest_time)
 
@@ -485,7 +485,7 @@ class STN(nx.DiGraph):
         r_latest_time = prev_timepoint.r_latest_time + edge_in_between.mean
         return Timepoint(timepoint_name, r_earliest_time, r_latest_time)
 
-    def get_time(self, task_id, node_type='start', lower_bound=True):
+    def get_time(self, task_id, node_type='departure', lower_bound=True):
         _time = None
         for i, data in self.nodes.data():
 
@@ -539,16 +539,16 @@ class STN(nx.DiGraph):
         Returns: (string) task id
 
         """
-        start_node_id = 2 * position + (position-2)
-        pickup_node_id = start_node_id + 1
-        delivery_node_id = pickup_node_id + 1
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        finish_node_id = start_node_id + 1
 
-        if self.has_node(start_node_id):
+        if self.has_node(departure_node_id):
+            task_id = self.nodes[departure_node_id]['data'].task_id
+        elif self.has_node(start_node_id):
             task_id = self.nodes[start_node_id]['data'].task_id
-        elif self.has_node(pickup_node_id):
-            task_id = self.nodes[pickup_node_id]['data'].task_id
-        elif self.has_node(delivery_node_id):
-            task_id = self.nodes[delivery_node_id]['data'].task_id
+        elif self.has_node(finish_node_id):
+            task_id = self.nodes[finish_node_id]['data'].task_id
         else:
             self.logger.error("There is no task in position %s", position)
             return
@@ -557,7 +557,7 @@ class STN(nx.DiGraph):
 
     def get_task_position(self, task_id):
         for i, data in self.nodes.data():
-            if task_id == data['data'].task_id and data['data'].node_type == 'start':
+            if task_id == data['data'].task_id and data['data'].node_type == 'departure':
                 return math.ceil(i/3)
 
     def get_earliest_task_id(self):
@@ -565,7 +565,7 @@ class STN(nx.DiGraph):
 
         Returns: task_id (string)
         """
-        # The first task in the graph is the task with the earliest start time
+        # The first task in the graph is the task with the earliest departure time
         # The first task is in node 1, node 0 is reserved for the zero timepoint
 
         if self.has_node(1):
@@ -650,13 +650,13 @@ class STN(nx.DiGraph):
 
     def execute_incoming_edge(self, task_id, node_type):
         finish_node_idx = self.get_edge_node_idx(task_id, node_type)
-        if node_type == "start":
+        if node_type == "departure":
             return
-        elif node_type == "pickup":
-            start_node_idx = self.get_edge_node_idx(task_id, "start")
-        elif node_type == "delivery":
-            start_node_idx = self.get_edge_node_idx(task_id, "pickup")
-        self.execute_edge(start_node_idx, finish_node_idx)
+        elif node_type == "start":
+            departure_node_idx = self.get_edge_node_idx(task_id, "departure")
+        elif node_type == "finish":
+            departure_node_idx = self.get_edge_node_idx(task_id, "start")
+        self.execute_edge(departure_node_idx, finish_node_idx)
 
     def remove_old_timepoints(self):
         nodes_to_remove = list()

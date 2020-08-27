@@ -44,7 +44,7 @@ class Timepoint(AsDictMixin):
 
 
 class Task(AsDictMixin):
-    def __init__(self, task_id, timepoints, edges, pickup_action_id, delivery_action_id):
+    def __init__(self, task_id, timepoints, edges, start_action_id, finish_action_id):
 
         """ Constructor for the Task object
 
@@ -52,14 +52,14 @@ class Task(AsDictMixin):
             task_id (UUID): An instance of an UUID object
             timepoints (list): list of timepoints (Timepoints)
             Edges (list): list of edges (Edges)
-            pickup_action_id (UUID): Action id of the pickup action
-            delivery_action_id (UUID): Action id of te delivery action
+            start_action_id (UUID): Action id linked to the start timepoint
+            finish_action_id (UUID): Action id linkted to the finish timepoint
         """
         self.task_id = task_id
         self.timepoints = timepoints
         self.edges = edges
-        self.pickup_action_id = pickup_action_id
-        self.delivery_action_id = delivery_action_id
+        self.start_action_id = start_action_id
+        self.finish_action_id = finish_action_id
 
     def __str__(self):
         to_print = ""
@@ -70,8 +70,8 @@ class Task(AsDictMixin):
         to_print += "\n Edges: \n"
         for edge in self.edges:
             to_print += str(edge) + "\t"
-        to_print += "\n Pickup action:" + str(self.pickup_action_id)
-        to_print += "\n Delivery action:" + str(self.delivery_action_id)
+        to_print += "\n Start action:" + str(self.start_action_id)
+        to_print += "\n Finish action:" + str(self.finish_action_id)
         return to_print
 
     def get_timepoint(self, timepoint_name):

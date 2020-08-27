@@ -1,7 +1,7 @@
 0616af00-ec3b-4ecd-ae62-c94a3703594c:
   task_id: 0616af00-ec3b-4ecd-ae62-c94a3703594c
-  earliest_pickup: 10
-  latest_pickup: 20
+  earliest_start: 10
+  latest_start: 20
   travel_time:
     name: "travel_time"
     mean: 5
@@ -12,8 +12,8 @@
     variance: 0.2
 207cc8da-2f0e-4538-802b-b8f3954df38d:
   task_id: 207cc8da-2f0e-4538-802b-b8f3954df38d
-  earliest_pickup: 40
-  latest_pickup: 50
+  earliest_start: 40
+  latest_start: 50
   travel_time:
     name: "travel_time"
     mean: 5
@@ -24,8 +24,8 @@
     variance: 0.2
 0d06fb90-a76d-48b4-b64f-857b7388ab70:
   task_id: 0d06fb90-a76d-48b4-b64f-857b7388ab70
-  earliest_pickup: 70
-  latest_pickup: 80
+  earliest_start: 70
+  latest_start: 80
   travel_time:
     name: "travel_time"
     mean: 5

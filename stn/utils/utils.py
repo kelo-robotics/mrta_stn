@@ -24,13 +24,13 @@ def load_yaml(file):
 
 def create_task(stn, task_dict):
     task_id = task_dict.get("task_id")
-    r_earliest_pickup = task_dict.get("earliest_pickup")
-    r_latest_pickup = task_dict.get("latest_pickup")
+    r_earliest_start = task_dict.get("earliest_start")
+    r_latest_start = task_dict.get("latest_start")
     travel_time = Edge(**task_dict.get("travel_time"))
     work_time = Edge(**task_dict.get("work_time"))
-    timepoint_constraints = stn.create_timepoint_constraints(r_earliest_pickup, r_latest_pickup, travel_time, work_time)
+    timepoint_constraints = stn.create_timepoint_constraints(r_earliest_start, r_latest_start, travel_time, work_time)
     inter_timepoint_constraints = [travel_time, work_time]
-    pickup_action_id = generate_uuid()
-    delivery_action_id = generate_uuid()
+    start_action_id = generate_uuid()
+    finish_action_id = generate_uuid()
 
-    return Task(task_id, timepoint_constraints, inter_timepoint_constraints, pickup_action_id, delivery_action_id)
+    return Task(task_id, timepoint_constraints, inter_timepoint_constraints, start_action_id, finish_action_id)
