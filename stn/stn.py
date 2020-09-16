@@ -372,8 +372,8 @@ class STN(nx.DiGraph):
             if i == 0:   # ignore ztp
                 continue
             if data['data'].node_type == "start" and \
-                (r_earliest_time < -self[i][0]['weight'] or
-                 r_latest_time < self[0][i]['weight']):
+                (r_earliest_time <= -self[i][0]['weight'] or
+                 r_latest_time <= self[0][i]['weight']):
                 task_position = math.ceil(i/3)
                 insertion_points.append(task_position)
         return insertion_points
