@@ -245,6 +245,15 @@ class STN(nx.DiGraph):
                 # wait time between finish of one task and departure of the next one. Fixed to [0, inf]
                 self.add_constraint(i, j)
 
+    def update_travel_time(self, task):
+        position = self.get_task_position(task.task_id)
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        travel_time = self.get_travel_time(task)
+
+        if self.has_edge(departure_node_id, start_node_id):
+            self.add_constraint(departure_node_id, start_node_id, travel_time, travel_time)
+
     @staticmethod
     def get_travel_time(task):
         """ Returns the mean of the travel time (time for going from current pose to start pose)

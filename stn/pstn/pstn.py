@@ -150,6 +150,20 @@ class PSTN(STN):
                 # wait time between finish of one task and departure of the next one. Fixed to [0, inf]
                 self.add_constraint(i, j)
 
+    def update_travel_time(self, task):
+        position = self.get_task_position(task.task_id)
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        distribution = self.get_travel_time_distribution(task)
+
+        if self.has_edge(departure_node_id, start_node_id):
+            if distribution.endswith("_0.0"):  # the distribution has no variation (stdev is 0)
+                # Make the constraint a requirement constraint
+                mean = float(distribution.split("_")[1])
+                self.add_constraint(departure_node_id, start_node_id, mean, mean)
+            else:
+                self.add_constraint(departure_node_id, start_node_id, distribution=distribution)
+
     @staticmethod
     def get_travel_time_distribution(task):
         travel_time = task.get_edge("travel_time")
