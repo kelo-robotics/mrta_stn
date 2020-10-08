@@ -254,6 +254,16 @@ class STN(nx.DiGraph):
         if self.has_edge(departure_node_id, start_node_id):
             self.add_constraint(departure_node_id, start_node_id, travel_time, travel_time)
 
+    def update_work_time(self, task):
+        position = self.get_task_position(task.task_id)
+        departure_node_id = 2 * position + (position-2)
+        start_node_id = departure_node_id + 1
+        finish_node_id = start_node_id + 1
+        work_time = self.get_work_time(task)
+
+        if self.has_edge(start_node_id, finish_node_id):
+            self.add_constraint(start_node_id, finish_node_id, work_time, work_time)
+
     @staticmethod
     def get_travel_time(task):
         """ Returns the mean of the travel time (time for going from current pose to start pose)
