@@ -55,7 +55,7 @@ def setUpLP(stn, decouple):
     bounds = {}
     deltas = {}
 
-    prob = pulp.LpProblem('PSTN Robust Execution LP', pulp.LpMaximize)
+    prob = pulp.LpProblem('PSTN_Robust_Execution_LP', pulp.LpMaximize)
 
     for (i, j) in stn.edges():
         weight = stn.get_edge_weight(i, j)
@@ -266,6 +266,8 @@ def srea_LP(inputstn,
     if debug:
         prob.writeLP('STN.lp')
         pulp.LpSolverDefault.msg = 10
+
+    pulp.LpSolverDefault.msg = 0
 
     # Based on https://stackoverflow.com/questions/27406858/pulp-solver-error
     # Sometimes pulp throws an exception instead of returning a problem with unfeasible status
