@@ -93,7 +93,7 @@ class PSTN(STN):
         """
 
         # The constraint is contingent if it has a probability distribution
-        is_contingent = distribution is not ""
+        is_contingent = distribution != ""
 
         super().add_constraint(i, j, wji, wij)
 
