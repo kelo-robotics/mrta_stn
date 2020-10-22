@@ -20,7 +20,7 @@ class STNU(STN):
 
     def __str__(self):
         to_print = ""
-        for (i, j, data) in self.edges.data():
+        for (i, j, data) in sorted(self.edges.data()):
             if self.has_edge(j, i) and i < j:
                 # Constraints with the zero timepoint
                 if i == 0:

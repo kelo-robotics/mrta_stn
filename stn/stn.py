@@ -37,7 +37,7 @@ class STN(nx.DiGraph):
 
     def __str__(self):
         to_print = ""
-        for (i, j, data) in self.edges.data():
+        for (i, j, data) in sorted(self.edges.data()):
             if self.has_edge(j, i) and i < j:
                 # Constraints with the zero timepoint
                 if i == 0:
@@ -729,7 +729,7 @@ class STN(nx.DiGraph):
 
     def to_dict(self):
         stn = copy.deepcopy(self)
-        for i, data in self.nodes.data():
+        for i, data in sorted(self.nodes.data()):
             stn.nodes[i]['data'] = self.nodes[i]['data'].to_dict()
         stn_dict = json_graph.node_link_data(stn)
         return stn_dict

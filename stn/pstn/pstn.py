@@ -46,14 +46,14 @@ class PSTN(STN):
 
     def __str__(self):
         to_print = ""
-        for (i, j, data) in self.edges.data():
+        for (i, j, data) in sorted(self.edges.data()):
             if self.has_edge(j, i) and i < j:
                 # Constraints with the zero timepoint
                 if i == 0:
                     timepoint = self.nodes[j]['data']
                     lower_bound = -self[j][i]['weight']
                     upper_bound = self[i][j]['weight']
-                    to_print += "Timepoint {}: [{}, {}]".format(timepoint, lower_bound, upper_bound)
+                    to_print += "Timepoint {}: {} [{}, {}]".format(timepoint, j, lower_bound, upper_bound)
                     if timepoint.is_executed:
                         to_print += " Ex"
                 # Constraints between the other timepoints
