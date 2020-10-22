@@ -53,7 +53,7 @@ class PSTN(STN):
                     timepoint = self.nodes[j]['data']
                     lower_bound = -self[j][i]['weight']
                     upper_bound = self[i][j]['weight']
-                    to_print += "Timepoint {}: {} [{}, {}]".format(timepoint, j, lower_bound, upper_bound)
+                    to_print += "Timepoint {}: [{}, {}]".format(timepoint, lower_bound, upper_bound)
                     if timepoint.is_executed:
                         to_print += " Ex"
                 # Constraints between the other timepoints
