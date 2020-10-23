@@ -532,6 +532,15 @@ class STN(nx.DiGraph):
 
         return _time
 
+    def get_times(self, task_id, node_type='departure'):
+        _time = None
+        for i, data in self.nodes.data():
+            if task_id == data['data'].task_id and data['data'].node_type == node_type:
+                lower_bound = -self[i][0]['weight']
+                upper_bound = self[0][i]['weight']
+                _time = (lower_bound, upper_bound)
+        return _time
+
     def get_node_earliest_time(self, node_id):
         return -self[node_id][0]['weight']
 
