@@ -542,7 +542,7 @@ class STN(nx.DiGraph):
     def get_times(self, task_id, node_type='departure'):
         _time = None
         for i, data in self.nodes.data():
-            if task_id == data['data'].task_id and data['data'].node_type == node_type:
+            if 'data' in data and task_id == data['data'].task_id and data['data'].node_type == node_type:
                 lower_bound = -self[i][0]['weight']
                 upper_bound = self[0][i]['weight']
                 _time = (lower_bound, upper_bound)
