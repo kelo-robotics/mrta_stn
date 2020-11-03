@@ -391,18 +391,15 @@ class STN(nx.DiGraph):
                 tasks.append(self.nodes[i]['data'].task_id)
         return tasks
 
-    def get_insertion_points(self, r_earliest_time, r_latest_time):
-        """ Returns positions in the stn that have tasks whose earliest and latest times are
-        within the given earliest and latest time
-
+    def get_insertion_points(self, r_earliest_time):
+        """ Returns positions in the stn that have tasks whose latest start time are
+        are less or equal than the given earliest time
         """
         insertion_points = list()
         for i, data in self.nodes.data():
             if i == 0:   # ignore ztp
                 continue
-            if data['data'].node_type == "start" and \
-                (r_earliest_time <= -self[i][0]['weight'] or
-                 r_latest_time <= self[0][i]['weight']):
+            if data['data'].node_type == "start" and r_earliest_time <= self[0][i]['weight']:
                 task_position = math.ceil(i/3)
                 insertion_points.append(task_position)
         return insertion_points
