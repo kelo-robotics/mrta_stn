@@ -340,13 +340,7 @@ class STN(nx.DiGraph):
         self.remove_node(start_node_id)
         self.remove_node(finish_node_id)
 
-        # Displace by -3 all nodes and constraints after position
-        mapping = {}
-        for node_id, data in self.nodes(data=True):
-            if node_id >= departure_node_id:
-                mapping[node_id] = node_id - 3
-        self.logger.debug("mapping: %s", mapping)
-        nx.relabel_nodes(self, mapping, copy=False)
+        self.displace_nodes(departure_node_id)
 
         if new_constraints_between:
             constraints = [((i), (i + 1)) for i in new_constraints_between[:-1]]
@@ -357,15 +351,31 @@ class STN(nx.DiGraph):
                     # wait time between finish of one task and departure of the next one
                     self.add_constraint(i, j)
 
-    def remove_node_ids(self, node_ids):
+    def remove_node_ids(self, node_ids, archived_stn=None):
         # Assumes that the node_ids are in consecutive order from node_id 1 onwards
-        for node_id in node_ids:
-            self.remove_node(node_id)
+        for i in node_ids:
+            if archived_stn:
+                # Start adding nodes after the last node_id in archived_stn
+                start_node_id = list(archived_stn.nodes())[-1]
+                if start_node_id == 0:  # skip the zero_timepoint
+                    start_node_id = 1
+                archived_stn.add_node(start_node_id, data=self.nodes[i]['data'])
+                archived_stn.add_edge(start_node_id, 0, weight=self[i][0]['weight'], is_executed=True)
+                archived_stn.add_edge(0, start_node_id, weight=self[0][i]['weight'], is_executed=True)
 
-        # Displace all remaining nodes by 3
+                if self.has_edge(i, i+1):
+                    archived_stn.add_constraint(start_node_id, start_node_id+1, -self[i+1][i]['weight'], self[i][i+1]['weight'])
+                else:
+                    # Add dummy node
+                    archived_stn.add_node(start_node_id+1)
+            self.remove_node(i)
+        return archived_stn
+
+    def displace_nodes(self, displace_after_node_id):
+        # Displace all remaining nodes by 3 after the given displace_after_node_id
         mapping = {}
         for node_id, data in self.nodes(data=True):
-            if node_id > 0:
+            if node_id > displace_after_node_id:
                 mapping[node_id] = node_id - 3
         nx.relabel_nodes(self, mapping, copy=False)
 
@@ -702,7 +712,7 @@ class STN(nx.DiGraph):
             departure_node_idx = self.get_edge_node_idx(task_id, "start")
         self.execute_edge(departure_node_idx, finish_node_idx)
 
-    def remove_old_timepoints(self):
+    def remove_old_timepoints(self, archived_stn=None):
         nodes_to_remove = list()
         for i in self.nodes():
             node_data = self.nodes[i]['data']
@@ -711,8 +721,7 @@ class STN(nx.DiGraph):
             if node_data.is_executed and (self.has_edge(i, i+1) and self[i][i+1]['is_executed']):
                 nodes_to_remove.append(i)
 
-        for node in nodes_to_remove:
-            self.remove_node(node)
+        return self.remove_node_ids(nodes_to_remove, archived_stn)
 
     def get_edge_node_idx(self, task_id, node_type):
         for i in self.nodes():
@@ -739,7 +748,8 @@ class STN(nx.DiGraph):
     def to_dict(self):
         stn = copy.deepcopy(self)
         for i, data in sorted(self.nodes.data()):
-            stn.nodes[i]['data'] = self.nodes[i]['data'].to_dict()
+            if 'data' in stn.nodes[i]:
+                stn.nodes[i]['data'] = self.nodes[i]['data'].to_dict()
         stn_dict = json_graph.node_link_data(stn)
         return stn_dict
 

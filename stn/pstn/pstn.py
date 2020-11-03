@@ -179,6 +179,29 @@ class PSTN(STN):
             else:
                 self.add_constraint(start_node_id, finish_node_id, distribution=distribution)
 
+    def remove_node_ids(self, node_ids, archived_stn=None):
+        # Assumes that the node_ids are in consecutive order from node_id 1 onwards
+        for i in node_ids:
+            if archived_stn:
+                # Start adding nodes after the last node_id in archived_stn
+                start_node_id = list(archived_stn.nodes())[-1]
+                if start_node_id == 0:  # skip the zero_timepoint
+                    start_node_id = 1
+                archived_stn.add_node(start_node_id, data=self.nodes[i]['data'])
+                archived_stn.add_edge(start_node_id, 0, weight=self[i][0]['weight'], is_executed=True)
+                archived_stn.add_edge(0, start_node_id, weight=self[0][i]['weight'], is_executed=True)
+
+                if self.has_edge(i, i+1):
+                    if 'is_contingent' in self[i][i+1]:
+                        archived_stn.add_constraint(start_node_id, start_node_id+1, -self[i+1][i]['weight'], self[i][i+1]['weight'], self[i][i+1]['distribution'])
+                    else:
+                        archived_stn.add_constraint(start_node_id, start_node_id+1, -self[i+1][i]['weight'], self[i][i+1]['weight'])
+                else:
+                    # Add dummy node
+                    archived_stn.add_node(start_node_id+1)
+            self.remove_node(i)
+        return archived_stn
+
     @staticmethod
     def get_travel_time_distribution(task):
         travel_time = task.get_edge("travel_time")
