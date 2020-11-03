@@ -755,7 +755,11 @@ class STN(nx.DiGraph):
         stn = cls()
         dict_json = json.loads(stn_json)
         graph = json_graph.node_link_graph(dict_json)
-        stn.add_nodes_from([(i, {'data': Node.from_dict(graph.nodes[i]['data'])}) for i in graph.nodes()])
+        for i in graph.nodes():
+            if 'data' in graph.nodes[i]:
+                stn.add_node(i, data=Node.from_dict(graph.nodes[i]['data']))
+            else:
+                stn.add_node(i)
         stn.add_edges_from(graph.edges(data=True))
 
         return stn
