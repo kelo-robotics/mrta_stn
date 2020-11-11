@@ -485,7 +485,7 @@ class STN(nx.DiGraph):
         completion_time = 0
         task_ids = self.get_tasks()
         for i, task_id in enumerate(task_ids):
-            completion_time += self.get_time(task_id, "finish", lower_bound=False)
+            completion_time += self.get_time(task_id, "finish")
 
         return completion_time
 
