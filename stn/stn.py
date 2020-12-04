@@ -322,7 +322,7 @@ class STN(nx.DiGraph):
         constraints = [((i), (i + 1)) for i in new_constraints_between[:-1]]
         self.add_intertimepoints_constraints(constraints, task)
 
-    def remove_task(self, position=1):
+    def remove_task(self, position=1, archived_stn=None):
         """ Removes the task from the given position"""
 
         self.logger.info("Removing task at position: %s", position)
@@ -330,15 +330,14 @@ class STN(nx.DiGraph):
         start_node_id = departure_node_id + 1
         finish_node_id = start_node_id + 1
 
+        node_ids = [departure_node_id, start_node_id, finish_node_id]
+
         new_constraints_between = list()
 
         if self.has_node(departure_node_id-1) and self.has_node(finish_node_id+1):
             new_constraints_between = [departure_node_id-1, departure_node_id]
 
-        # Remove node and all adjacent edges
-        self.remove_node(departure_node_id)
-        self.remove_node(start_node_id)
-        self.remove_node(finish_node_id)
+        archived_stn = self.remove_node_ids(node_ids, archived_stn)
 
         self.displace_nodes(departure_node_id)
 
@@ -350,6 +349,8 @@ class STN(nx.DiGraph):
                 if self.nodes[i]['data'].node_type == "finish":
                     # wait time between finish of one task and departure of the next one
                     self.add_constraint(i, j)
+
+        return archived_stn
 
     def remove_node_ids(self, node_ids, archived_stn=None):
         # Assumes that the node_ids are in consecutive order from node_id 1 onwards
@@ -540,13 +541,14 @@ class STN(nx.DiGraph):
         return _time
 
     def get_times(self, task_id, node_type='departure'):
-        _time = None
         for i, data in self.nodes.data():
             if 'data' in data and task_id == data['data'].task_id and data['data'].node_type == node_type:
                 lower_bound = -self[i][0]['weight']
                 upper_bound = self[0][i]['weight']
                 _time = (lower_bound, upper_bound)
-        return _time
+                is_executed = data['data'].is_executed
+                return _time, is_executed
+        return None, None
 
     def get_node_earliest_time(self, node_id):
         return -self[node_id][0]['weight']
