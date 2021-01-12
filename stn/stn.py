@@ -83,12 +83,12 @@ class STN(nx.DiGraph):
         self.add_node(0, data=node)
 
     def get_earliest_time(self):
-        edges = [e for e in self.edges]
+        edges = [e for e in sorted(self.edges)]
         first_edge = edges[0]
         return -self[first_edge[1]][0]['weight']
 
     def get_latest_time(self):
-        edges = [e for e in self.edges]
+        edges = [e for e in sorted(self.edges)]
         last_edge = edges[-1]
         return self[0][last_edge[0]]['weight']
 
@@ -566,7 +566,7 @@ class STN(nx.DiGraph):
 
     def get_nodes_by_task(self, task_id):
         nodes = list()
-        for node_id, data in self.nodes.data():
+        for node_id, data in sorted(self.nodes.data()):
             if data['data'].task_id == task_id:
                 node = (node_id, self.nodes[node_id]['data'])
                 nodes.append(node)
@@ -653,7 +653,7 @@ class STN(nx.DiGraph):
 
         """
         node_ids = list()
-        for i in self.nodes():
+        for i in sorted(self.nodes()):
             if task_id == self.nodes[i]['data'].task_id:
                 node_ids.append(i)
 
