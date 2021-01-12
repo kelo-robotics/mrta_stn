@@ -613,19 +613,19 @@ class STN(nx.DiGraph):
             if task_id == data['data'].task_id and data['data'].node_type == 'departure':
                 return math.ceil(i/3)
 
-    def get_earliest_task_id(self):
+    def get_earliest_task_id(self, node_type=None):
         """ Returns the id of the earliest task in the stn
 
         Returns: task_id (string)
         """
-        # The first task in the graph is the task with the earliest departure time
-        # The first task is in node 1, node 0 is reserved for the zero timepoint
-
-        if self.has_node(1):
-            task_id = self.nodes[1]['data'].task_id
-            return task_id
-
-        self.logger.debug("STN has no tasks yet")
+        # The first task in the graph is the task with the earliest time
+        # node 0 is reserved for the zero timepoint
+        for i, data in sorted(self.nodes.data()):
+            if i == 0:   # ignore ztp
+                continue
+            if node_type is None or \
+                    (node_type is not None and data['data'].node_type == node_type):
+                return data['data'].task_id
 
     def get_task_nodes(self, task_id):
         """ Gets the nodes in the stn associated with the given task_id
