@@ -388,7 +388,9 @@ class STN(nx.DiGraph):
         """
         tasks = list()
         for i in self.nodes():
-            if self.nodes[i]['data'].task_id not in tasks and self.nodes[i]['data'].node_type != 'zero_timepoint':
+            if 'data' in self.nodes[i] and \
+                    self.nodes[i]['data'].task_id not in tasks and\
+                    self.nodes[i]['data'].node_type != 'zero_timepoint':
                 tasks.append(self.nodes[i]['data'].task_id)
         return tasks
 
