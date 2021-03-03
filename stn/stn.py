@@ -298,25 +298,30 @@ class STN(nx.DiGraph):
         self.logger.info("Edges: %s ", self.number_of_edges())
 
     def update_task(self, task):
-        position = self.get_task_position(task.task_id)
-        departure_node_id = 2 * position + (position-2)
-        start_node_id = departure_node_id + 1
-        finish_node_id = start_node_id + 1
+        departure_node_id, _ = self.get_node_by_type(task.task_id, "departure")
+        start_node_id, _ = self.get_node_by_type(task.task_id, "start")
+        finish_node_id, _ = self.get_node_by_type(task.task_id, "finish")
 
         # Adding an existing timepoint constraint updates the constraint
-        self.add_timepoint_constraint(departure_node_id, task.get_timepoint("departure"))
-        self.add_timepoint_constraint(start_node_id, task.get_timepoint("start"))
-        self.add_timepoint_constraint(finish_node_id, task.get_timepoint("finish"))
+        if departure_node_id:
+            self.add_timepoint_constraint(departure_node_id, task.get_timepoint("departure"))
+        if start_node_id:
+            self.add_timepoint_constraint(start_node_id, task.get_timepoint("start"))
+        if finish_node_id:
+            self.add_timepoint_constraint(finish_node_id, task.get_timepoint("finish"))
 
         # Add constraints between new nodes
-        new_constraints_between = [departure_node_id, start_node_id, finish_node_id]
+        if departure_node_id:
+            new_constraints_between = [departure_node_id, start_node_id, finish_node_id]
+        else:
+            new_constraints_between = [start_node_id, finish_node_id]
 
         # Check if there is a node after the new finish node
         if self.has_node(finish_node_id+1):
             new_constraints_between.append(finish_node_id+1)
 
         # Check if there is a node before the new departure node
-        if self.has_node(departure_node_id-1):
+        if departure_node_id and self.has_node(departure_node_id-1):
             new_constraints_between.insert(0, departure_node_id-1)
 
         constraints = [((i), (i + 1)) for i in new_constraints_between[:-1]]
@@ -578,6 +583,7 @@ class STN(nx.DiGraph):
         for node_id, data in self.nodes.data():
             if data['data'].task_id == task_id and data['data'].node_type == node_type:
                 return node_id, self.nodes[node_id]['data']
+        return None, None
 
     def set_action_id(self, node_id, action_id):
         self.nodes[node_id]['data'].action_id = action_id
@@ -613,6 +619,10 @@ class STN(nx.DiGraph):
     def get_task_position(self, task_id):
         for i, data in self.nodes.data():
             if task_id == data['data'].task_id and data['data'].node_type == 'departure':
+                return math.ceil(i/3)
+            if task_id == data['data'].task_id and data['data'].node_type == 'start':
+                return math.ceil(i/3)
+            if task_id == data['data'].task_id and data['data'].node_type == 'finish':
                 return math.ceil(i/3)
 
     def get_earliest_task_id(self, node_type=None):
