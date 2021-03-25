@@ -539,7 +539,7 @@ class STN(nx.DiGraph):
         _time = None
         for i, data in self.nodes.data():
 
-            if task_id == data['data'].task_id and data['data'].node_type == node_type:
+            if 'data' in data and task_id == data['data'].task_id and data['data'].node_type == node_type:
                 if lower_bound:
                     _time = -self[i][0]['weight']
                 else:  # upper bound
