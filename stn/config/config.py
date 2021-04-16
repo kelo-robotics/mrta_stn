@@ -1,9 +1,11 @@
-from stn.stn import STN
-from stn.pstn.pstn import PSTN
-from stn.stnu.stnu import STNU
-from stn.methods.srea import srea
-from stn.methods.fpc import get_minimal_network
+import copy
+
 from stn.methods.dsc_lp import DSC_LP
+from stn.methods.fpc import get_minimal_network
+from stn.methods.srea import srea
+from stn.pstn.pstn import PSTN
+from stn.stn import STN
+from stn.stnu.stnu import STNU
 
 
 class STNFactory(object):
@@ -77,12 +79,28 @@ class StaticRobustExecution(object):
 
         :param stn: stn (object)
         """
+        archived_stn = PSTN()
+        stn = copy.deepcopy(stn)
+        archived_stn = stn.remove_old_timepoints(archived_stn)
+
         result = srea(stn, debug=True)
+
         if result is None:
             return
         risk_metric, dispatchable_graph = result
 
         dispatchable_graph.risk_metric = risk_metric
+
+        for i in archived_stn.nodes():
+            if i != 0 and 'data' in archived_stn.nodes[i]:
+                dispatchable_graph.add_node(i, data=archived_stn.nodes[i]['data'])
+                dispatchable_graph.add_edge(i, 0, weight=archived_stn[i][0]['weight'], is_executed=True)
+                dispatchable_graph.add_edge(0, i, weight=archived_stn[0][i]['weight'], is_executed=True)
+
+            if archived_stn.has_edge(i, i + 1):
+                dispatchable_graph.add_constraint(i, i + 1, -archived_stn[i + 1][i]['weight'],
+                                                  archived_stn[i][i + 1]['weight'])
+                dispatchable_graph.execute_edge(i, i + 1)
 
         return dispatchable_graph
 

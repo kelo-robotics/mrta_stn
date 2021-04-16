@@ -103,7 +103,7 @@ def setUpLP(stn, decouple):
     return (bounds, deltas, prob)
 
 
-def srea(inputstn,
+def srea(stn,
          debug=False,
          debugLP=False,
          returnAlpha=True,
@@ -112,7 +112,7 @@ def srea(inputstn,
          ub=0.999):
 
     """ Runs the SREA algorithm on an input STN
-    @param inputstn The STN that we are running SREA on
+    @param stn The STN that we are running SREA on
     @param debug Print optional status messages about alpha levels
     @param debugLP Print optional status messages about each run of the LP
     @param lb The starting lower bound on alpha for the binary search
@@ -121,8 +121,6 @@ def srea(inputstn,
     @returns a tuple (alpha, outputstn) if there is a solution,
     or None if there is no solution
     """
-
-    stn = copy.deepcopy(inputstn)
 
     # dictionary of alphas for binary search
     alphas = {i: i / 1000.0 for i in range(1001)}
